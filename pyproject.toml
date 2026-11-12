@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
     "langchain>=1.4.10",
+    "langchain-google-genai>=4.4.3",
 ]
 
 [project.scripts]
