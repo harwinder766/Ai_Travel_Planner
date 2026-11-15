@@ -1,15 +1,24 @@
 [project]
 name = "ai-travel-planner"
 version = "0.1.0"
-description = "Add your description here"
+description = "A reliable AI-assisted travel planning application"
 readme = "README.md"
 authors = [
     { name = "harwinder766", email = "hitin766@gmail.com" }
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "fastapi>=0.115.0",
     "langchain>=1.4.10",
     "langchain-google-genai>=4.4.3",
+    "langchain-groq>=1.1.0",
+    "langchain-openai>=1.1.0",
+    "langchain-tavily>=0.2.0",
+    "langgraph>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.32.0",
+    "streamlit>=1.57.0",
+    "uvicorn[standard]>=0.34.0",
 ]
 
 [project.scripts]

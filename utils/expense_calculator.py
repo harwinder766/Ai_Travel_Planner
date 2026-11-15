@@ -1,6 +1,6 @@
 class Calculator:
     @staticmethod
-    def multiply(a: int, b: int) -> int:
+    def multiply(a: float, b: int) -> float:
         """
         Multiply two integers.
 
@@ -38,6 +38,8 @@ class Calculator:
         Returns:
             float: Expense for a single day
         """
-        return total / days if days > 0 else 0
+        if days <= 0:
+            raise ValueError("Days must be greater than zero.")
+        return total / days
     
     

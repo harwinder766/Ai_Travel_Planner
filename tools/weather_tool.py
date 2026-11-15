@@ -1,40 +1,47 @@
-from config import settings
-from langchain.tools import tool
 from typing import Any
+
+from langchain_core.tools import tool
+
+from config import settings
 from utils.weather_info import WeatherInfo
+
 
 class WeatherTool:
     def __init__(self):
-        self.weather_info = WeatherInfo(api_key=settings.OPENWEATHERMAP_API_KEY)
-        self.weather_tool_list = self._setup_tools()
+        self.tools = self._setup_tools()
 
-    def _setup_tools(self) -> list:
-        """Set up the tools for weather information retrieval."""
+    def _service(self) -> WeatherInfo:
+        if not settings.openweathermap_api_key:
+            raise RuntimeError(
+                "Weather lookup is unavailable. Set OPENWEATHERMAP_API_KEY."
+            )
+        return WeatherInfo(api_key=settings.openweathermap_api_key)
 
-        @tool()
-        def get_current_weather(place: str) -> Any:
+    def _setup_tools(self) -> list[Any]:
+        @tool
+        def get_current_weather(place: str) -> str:
             """Get the current weather for a given place."""
-            weather_data = self.weather_info.get_current_weather(place)
-            if weather_data:
-                temp = weather_data.get('main', {}).get('temp', 'N/A')
-                desc = weather_data.get('weather', [{}])[0].get('description', 'N/A')
-                return f"Current weather in {place}: {temp}°C, {desc}"
-            return f"Could not fetch weather for {place}"
+            weather_data = self._service().get_current_weather(place)
+            temperature = weather_data.get("main", {}).get("temp", "N/A")
+            description = weather_data.get("weather", [{}])[0].get(
+                "description", "N/A"
+            )
+            return f"Current weather in {place}: {temperature}°C, {description}"
 
-        @tool()
+        @tool
         def get_weather_forecast(city: str) -> str:
-            """Get weather forecast for a city"""
-            forecast_data = self.weather_service.get_forecast_weather(city)
-            if forecast_data and 'list' in forecast_data:
-                forecast_summary = []
-                for i in range(len(forecast_data['list'])):
-                    item = forecast_data['list'][i]
-                    date = item['dt_txt'].split(' ')[0]
-                    temp = item['main']['temp']
-                    desc = item['weather'][0]['description']
-                    forecast_summary.append(f"{date}: {temp} degree celcius , {desc}")
-                return f"Weather forecast for {city}:\n" + "\n".join(forecast_summary)
-            return f"Could not fetch forecast for {city}"
+            """Get a five-day weather forecast for a city."""
+            forecast_data = self._service().get_forecast_weather(city)
+            summaries = []
+            for item in forecast_data.get("list", []):
+                date = item.get("dt_txt", "").split(" ")[0]
+                temperature = item.get("main", {}).get("temp", "N/A")
+                description = item.get("weather", [{}])[0].get(
+                    "description", "N/A"
+                )
+                summaries.append(f"{date}: {temperature}°C, {description}")
+            if not summaries:
+                raise RuntimeError(f"No forecast data was returned for {city}.")
+            return f"Weather forecast for {city}:\n" + "\n".join(summaries)
 
         return [get_current_weather, get_weather_forecast]
-        

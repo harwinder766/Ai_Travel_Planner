@@ -1,20 +1,28 @@
-import os
-from utils.currency_converter import CurrencyConverter
-from typing import List
-from langchain.tools import tool
+from typing import Any
+
+from langchain_core.tools import tool
+
 from config import settings
+from utils.currency_converter import CurrencyConverter
+
 
 class CurrencyConverterTool:
     def __init__(self):
-        self.api_key = settings.EXCHANGE_RATE_API_KEY
-        self.currency_service = CurrencyConverter(self.api_key)
-        self.currency_converter_tool_list = self._setup_tools()
+        self.tools = self._setup_tools()
 
-    def _setup_tools(self) -> List:
-        """Setup all tools for the currency converter tool"""
+    def _setup_tools(self) -> list[Any]:
         @tool
-        def convert_currency(amount:float, from_currency:str, to_currency:str):
-            """Convert amount from one currency to another"""
-            return self.currency_service.convert(amount, from_currency, to_currency)
-        
+        def convert_currency(
+            amount: float, from_currency: str, to_currency: str
+        ) -> float:
+            """Convert an amount between currencies using a live exchange rate."""
+            if not settings.exchange_rate_api_key:
+                raise RuntimeError(
+                    "Currency conversion is unavailable. "
+                    "Set EXCHANGE_RATE_API_KEY."
+                )
+            return CurrencyConverter(settings.exchange_rate_api_key).convert(
+                amount, from_currency, to_currency
+            )
+
         return [convert_currency]

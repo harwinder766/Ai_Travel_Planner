@@ -1,49 +1,76 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from agent.agentic_workflow import GraphBuilder
-from utils.save_to_document import save_document
-from starlette.responses import JSONResponse
-import os
-import datetime
+import logging
+from typing import Any
+
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from langchain_core.messages import AIMessage
+from pydantic import BaseModel, Field
+
+from agent.agentic_workflow import get_graph
+from config import settings
+
 load_dotenv()
 
-app = FastAPI()
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="AI Travel Planner API",
+    version="0.1.0",
+    description="A reliable API for generating AI-assisted travel plans.",
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # set specific origins in prod
+    allow_origins=list(settings.cors_origins),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+
+
 class QueryRequest(BaseModel):
-    question: str
+    question: str = Field(
+        min_length=3,
+        max_length=4000,
+        description="A travel planning request.",
+    )
 
-@app.post("/query")
-async def query_travel_agent(query:QueryRequest):
+
+class QueryResponse(BaseModel):
+    answer: str
+
+
+def _message_content(message: Any) -> str:
+    if isinstance(message, AIMessage):
+        content = message.content
+    else:
+        content = getattr(message, "content", message)
+    if isinstance(content, str):
+        return content
+    return str(content)
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.post("/query", response_model=QueryResponse)
+def query_travel_agent(query: QueryRequest) -> QueryResponse:
     try:
-        print(query)
-        graph = GraphBuilder(model_provider="groq")
-        react_app=graph()
-        #react_app = graph.build_graph()
-
-        png_graph = react_app.get_graph().draw_mermaid_png()
-        with open("my_graph.png", "wb") as f:
-            f.write(png_graph)
-
-        print(f"Graph saved as 'my_graph.png' in {os.getcwd()}")
-        # Assuming request is a pydantic object like: {"question": "your text"}
-        messages={"messages": [query.question]}
-        output = react_app.invoke(messages)
-
-        # If result is dict with messages:
-        if isinstance(output, dict) and "messages" in output:
-            final_output = output["messages"][-1].content  # Last AI response
-        else:
-            final_output = str(output)
-        
-        return {"answer": final_output}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        graph = get_graph(settings.model_provider)
+        output = graph.invoke({"messages": [("user", query.question)]})
+        messages = output.get("messages", [])
+        if not messages:
+            raise RuntimeError("The travel agent returned no messages.")
+        return QueryResponse(answer=_message_content(messages[-1]))
+    except (RuntimeError, ValueError) as exc:
+        logger.warning("Travel query could not be completed: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Unexpected travel query failure")
+        raise HTTPException(
+            status_code=500,
+            detail="The travel agent could not complete the request.",
+        ) from exc

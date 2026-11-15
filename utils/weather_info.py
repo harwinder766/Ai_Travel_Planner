@@ -6,7 +6,7 @@ class WeatherInfo:
         if not api_key:
             raise ValueError("API key must be provided.")
         self.api_key = api_key
-        self.base_url = "http://api.openweathermap.org/data/2.5"
+        self.base_url = "https://api.openweathermap.org/data/2.5"
         self.units = units
         self.timeout = timeout
         self.session = requests.Session()
