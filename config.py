@@ -15,5 +15,8 @@ class Settings:
 
     # --- WEATHER API ---
     OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
-    
+
+    # --- CURRENCY API ---
+    EXCHANGE_RATE_API_KEY = os.getenv("EXCHANGE_RATE_API_KEY")
+
 settings = Settings()
